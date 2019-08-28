@@ -1,0 +1,279 @@
+---
+title: "Tarea Paquetes Avanzados en R"
+author: "Alejandro Valladares Vaquero"
+date:   "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: paper
+    highlight: tango
+    number_sections: TRUE
+    toc:          TRUE
+    toc_float:    TRUE
+    code_folding: "show"
+  pdf_document:   default
+  word_document:  default
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***
+# Instalación
+
+Fragmento de código con las instancias para instalar y cargar los paquetes utilizados en esta práctica.
+
+```{r installation, message=FALSE, warning=FALSE}
+#install.packages("ggplot2")
+#install.packages("tidyverse")
+#install.packages("data.table")
+#install.packages("plotly")
+
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(data.table)
+library(modelr)
+library(rmarkdown)
+library(plotly)
+
+# Procedemos a cargar el dataset "diamonds" que viene incluído en ggplot
+diamDT <- as.data.table(ggplot2::diamonds)
+diam_tibble <- as_tibble(ggplot2::diamonds)
+```
+
+***
+# Análisis numérico
+
+## Un data.frame ordenado por ```max(price)``` en función de ```carat```.
+```{r diamonds1}
+head(diamDT[, .(max_price = max(price)), by = carat][order(-max_price, na.last = TRUE)],10)
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```color```.
+```{r diamonds2}
+diamDT[, .(max_price = max(price)), by = color][order(-max_price, na.last = TRUE)]
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```cut```.
+```{r diamonds3}
+diamDT[, .(max_price = max(price)), by = cut][order(-max_price, na.last = TRUE)]
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```clarity```.
+```{r diamonds4}
+diamDT[, .(max_price = max(price)), by = clarity][order(-max_price, na.last = TRUE)]
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```carat``` y ```color```.
+```{r diamonds5}
+head(diamDT[, .(max_price = max(price)), by = c('carat', 'color')][order(-max_price, na.last = TRUE)],10)
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```carat``` y ```cut```.
+```{r diamonds6}
+head(diamDT[, .(max_price = max(price)), by = c('carat', 'cut')][order(-max_price, na.last = TRUE)],10)
+```
+
+## Un data.frame ordenado por ```max(price)``` en función de ```carat``` y ```clarity```.
+```{r diamonds7}
+head(diamDT[, .(max_price = max(price)), by = c('carat', 'clarity')][order(-max_price, na.last = TRUE)],10)
+```
+
+***
+# Análisis gráfico
+
+## Gráfico de puntos (scatter plot)
+
+```{r scatter_plot1, echo=FALSE}
+ggplot(data = diamDT) +
+  geom_point(mapping = aes(x = carat, y = price))
+```
+
+En el gráfico de puntos podemos observar que la relación entre el peso (```carat```) de los diamantes y el precio es exponencial.
+
+### Scatter plot con el color como tercera dimensión (```cut```)
+```{r scatter_plot2, echo=FALSE}
+ggplot(data = diamDT) +
+  geom_point(mapping = aes(x = carat, y = price, color = cut))
+```
+
+Si introducimos una tercera dimensión en el gráfico por medio del color, a simple vista es díficil discernir que tipo de relación puede haber entre el precio y la calidad del diamante (```Ideal cut > Fair cut```). 
+Este efecto es debido principalmente a qué un diamante por un corte muy inferior que tenga, si el peso es mucho mayor, el precio será a ser mayor. Es posible observar también unos cuantos outliers más pesados y la mayoría corresponden a diamantes con un ```Fair cut```.
+
+### Inroducimos la tercera dimensión como ```facets```
+```{r scatter_plot3, echo=FALSE}
+ggplot(data = diamDT) +
+  geom_point(mapping = aes(x = carat, y = price, color = cut)) +
+  facet_grid(~ cut)
+```
+
+Esta forma de visualizar los datos es muy interesante. Ya que nos ha proporcionado la siguiente información:
+
+- El rango de precio de los diamantes no depende de la calidad del corte, vemos que prácticamente todos se mueven en el mismo rango
+
+### Introducimos el ```color``` como cuarta dimensión
+```{r scatter_plot4, echo=FALSE}
+ggplot(data = diamDT) +
+  geom_point(mapping = aes(x = carat, y = price, color = cut)) +
+  facet_grid(cut ~ color)
+```
+
+***
+### Gráfico de cajas (box-whiskers plot)
+Este tipo de gráfico nos permite visualizar directamente varias estadísticos de un conjunto de variables categóricas. Es una manera muy visual de, ver cual es la dispersión de una variable dependiente respecto a las features que queremos estudiar. También nos permite detectar de forma muy visual ***outliers*** en estas distribuciones.
+
+-La caja representa el rango intercuartil de la distribución (la diferencia entre el Q3 y Q1, que son las "tapas" de la caja)
+-La barra en mitad de la caja representa el valor mediano de la distribución.
+-Los límites de los bigotes ("whiskers") muestran los valores 
+"máximos" (Q3: Percentil 75%) y "mínimos" (Q1: Percentil 25%)
+-Los puntos rojos, que son los puntos que están por fuera del rango de los bigotes, son los posibles outliers de la distribución.
+
+#### 
+```{r box_plot1, echo=FALSE}
+ggplot(data = diamDT, mapping = aes(x = cut, y = price)) +
+  geom_boxplot(outlier.colour = "red", outlier.size = 1)
+```
+
+El gráfico de cajas confirma la sospecha de que diamantes con peor corte tienen mayor precio medio. Aunque no pueda parecer lógico, como ya adelanté, el peso de los diamantes (```carat```) es un factor importante en el precio final. 
+
+#### 
+```{r box_plot2, echo=FALSE}
+ggplot(data = diamDT, mapping = aes(x = color, y = price)) +
+  geom_boxplot(outlier.colour = "red", outlier.size = 1)
+```
+
+Con el ```color``` ocurre exactamente lo mismo. En los siguientes apartados analizaremos los datos más profundamente para contestar a estas preguntas.
+
+***
+## Respuestas para el análisis del gráfico de puntos
+
+Antes de responder las preguntas i y ii de este apartado, vamos a realizar una exploración del conjunto de datos más en profundidad y a su vez contestar a la pregunta iii.
+
+#### Histograma del conjunto de datos
+
+Para realizar el Exploratory Data Analysis visual, empezamos haciendo un histograma para ver la cantidad de diamantes que hay en función de su peso.
+``` {r, echo=FALSE}
+ggplot(data = diamDT, ) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.01)
+```
+
+Puede observarse como la mayoría de los diamantes tienen menos de 2 quilates y medio. También es interesante notar como tiende a haber más diamantes con pesos redondos (0.5, 1.0, 1.5 quilates, etc.), por lo que se puede intuir que el factor humano tiene cierta relevancia en el proceso de pulido de la gema.
+
+***
+```{r }
+diam_tibble %>% 
+  count(cut_width(carat, 0.5))
+
+small_diam <- diam_tibble %>%
+  filter(carat < 3)
+```
+Un ***98% de los diamantes*** tienen menos de 3 quilates. Por lo que vamos a volver explorar de nuevo los datos con este grupo más "reducido".
+
+
+``` {r, echo=FALSE}
+p <- ggplot(data = small_diam, ) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.01) +
+  xlim(0,3)
+
+ggplotly(p)
+```
+
+#### Scatter plot del conjunto "reducido"
+```{r, echo=FALSE}
+  ggplot(data = small_diam, mapping = aes(x = carat, y = price)) +
+    geom_point(mapping = aes())
+```
+
+***
+#### Transformación logarítmica
+
+Aprovechando la relación exponencial entre ```price``` y ```carat```. Vamos a realizar una transformación logarítmica de los datos para hacer una regresión lineal sobre las variables transformadas.
+
+```{r}
+small_diam <- small_diam %>%
+  dplyr::mutate(log_price = log2(price), log_carat = log2(carat))
+
+```
+```{r, echo = FALSE}
+ggplot(small_diam, aes(log_carat, log_price)) +
+  geom_point(mapping = aes())
+```
+
+
+La regresión lineal sobre el conjunto transformado será de la siguiente forma:
+<br>
+<center>$\log_2(price) \sim log_2(carat)$</center>
+<br>
+
+Calculamos la regresión lineal sobre los datos transformados
+```{r}
+model_diam <- lm(log_price ~ log_carat, data = small_diam)
+
+grid <- small_diam %>% 
+  data_grid(carat = seq_range(carat, 20)) %>% 
+  mutate(log_carat = log2(carat)) %>% 
+  add_predictions(model_diam, "log_price") %>% 
+  mutate(price = 2 ^ log_price)
+```
+
+Y a continuación pintamos las predicciones hechas, sobre el dataset original (deshaciendo la transformación logarítmica):
+``` {r, echo=FALSE}
+ggplot(small_diam, aes(carat, price)) +
+  geom_point(mapping = aes()) +
+  geom_line(data = grid, colour = "red", size = 1) +
+  coord_cartesian(ylim = c(0,20000))
+```
+
+#### Resumen de la regresión
+``` {r}
+summary(model_diam)
+```
+
+Vemos que el modelo tiene un valor de $R^2 = 0.9334$, un estadístico F y un p-valor muy bajos lo cual quiere decir que la significancia estadística del ```log(carat)``` con respecto al ```log(precio)``` es muy alta. 
+
+La ventaja de este modelo, además es su simplicidad, porque además, al no tener en cuenta variables categóricas como ```cut color``` no hacen falta variables dummy con el aumento de parámetros que añadir a la regresión.
+
+#### Análisis de los residuos
+
+En el gráfico de los residuos que ha dejado el modelo ```model_diam``` podemos ver una distribución sin ninguna tendencia. Esto es una buena señal, ya que hemos conseguido ***normalizar*** la distribución de nuestros datos al realizar la transformación
+
+```{r}
+small_diam <- small_diam %>% 
+  add_residuals(model_diam, "log_residuals")
+```
+```{r, echo=FALSE}
+ggplot(small_diam, aes(log_carat, log_residuals)) +
+  geom_point(mapping = aes())
+```
+
+***
+
+### Gráficos de cajas con respecto a los residuos
+
+Volvemos a sacar los gráficos de cajas, pero esta vez con respecto a los residuos del precio. De esta forma, estamos eliminando la correlación que hay entre ```price``` y ```carat```
+
+#### Relación entre ```cut``` y ```price```
+
+```{r, echo=FALSE}
+ggplot(data = small_diam, mapping = aes(x = cut, y = log_residuals)) +
+  geom_boxplot(outlier.colour = "red", outlier.size = 1)
+```
+
+Como hemos realizado una transformación la interpretabilidad del ***eje y*** del modelo no es inmediata.
+Como se trata de una transformación logarítmica $2^1 = 2$ $2^-1 = 1/2$ por lo que, un diamante que tiene un valor en ***y*** un punto por encima que otro vale el doble.
+
+***Conclusión:*** la tendencia es la que se esperaría en un principio. A ***mayor calidad*** en el corte ***mayor precio***.
+
+
+
+#### Relación entre ```color``` y ```price```
+
+```{r, echo=FALSE}
+ggplot(data = small_diam, mapping = aes(x = color, y = log_residuals)) +
+  geom_boxplot(outlier.colour = "red", outlier.size = 1)
+```
+
+***Conclusión:*** A ***mayor calidad*** en el color ***mayor precio***.
+
